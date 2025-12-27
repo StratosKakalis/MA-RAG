@@ -12,21 +12,98 @@ from typing import NamedTuple
 from ir_datasets.util import DownloadConfig, home_path, Cache, ZipExtract, GzipExtract, LocalDownload
 from ir_datasets.formats import TsvDocs, TsvQueries, TrecQrels
 from typing import Annotated, Sequence, Literal, Sequence, Optional
+from typing import Dict, Any, Tuple
 from typing_extensions import TypedDict, List
 from pydantic import BaseModel, Field
 import operator
+import datasets
 
-def load_dataset(name, split):
+import os
+os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "1200"
+os.environ["HF_HUB_ETAG_TIMEOUT"] = "1200"
+os.environ["HF_HUB_DOWNLOAD_RETRY"] = "5"
+
+# def load_dataset(name, split):
+#     """
+#     Load queries and corpus.
+#     This function only supports ir_datasets
+#     """
+#     nq_dataset = ir_datasets.load(f"{name}/{split}")
+#     df = pd.DataFrame(nq_dataset.queries_iter())
+#     nq_q_dict = {k: {"q": q, "a": a} for k, q, a in zip(df['query_id'].to_list(), df['text'].to_list(), df['answers'].to_list())}
+#     corpus = nq_dataset.docs_store()
+#     df_meta = pd.DataFrame(nq_dataset.qrels_iter())
+#     return corpus, nq_q_dict, df_meta 
+class GenericDoc(NamedTuple):
+    doc_id: str
+    d: str
+    t: str
+    a: str
+    m: str
+    def default_text(self):
+        return self.a
+
+def load_dataset(name: str, split: str = "validation") -> Tuple[Dict[str, GenericDoc], Dict[str, Dict[str, Any]], pd.DataFrame]:
     """
-    Load queries and corpus.
-    This function only supports ir_datasets
+    Load dataset using Hugging Face Datasets.
+    Returns:
+        - corpus: dict of doc_id -> GenericDoc
+        - nq_q_dict: dict of query_id -> {"q": question, "a": answer}
+        - df_meta: optional DataFrame with metadata (empty if not available)
     """
-    nq_dataset = ir_datasets.load(f"{name}/{split}")
-    df = pd.DataFrame(nq_dataset.queries_iter())
-    nq_q_dict = {k: {"q": q, "a": a} for k, q, a in zip(df['query_id'].to_list(), df['text'].to_list(), df['answers'].to_list())}
-    corpus = nq_dataset.docs_store()
-    df_meta = pd.DataFrame(nq_dataset.qrels_iter())
-    return corpus, nq_q_dict, df_meta 
+
+    # Map dataset names to HF datasets
+    hf_name_map = {
+        "hotpotqa": ("hotpot_qa", "distractor"),
+        "nq": ("natural_questions", "default"),
+        "triviaqa": ("trivia_qa", "unfiltered"),
+        "2wiki": ("2wikimultihopqa", None),
+        "fever": ("fever", None)
+    }
+
+    if name not in hf_name_map:
+        raise ValueError(f"Dataset {name} not supported for Hugging Face loading.")
+
+    hf_dataset_name, hf_config = hf_name_map[name]
+    if hf_config:
+        dataset = datasets.load_dataset(hf_dataset_name, hf_config, split=split)
+    else:
+        dataset = datasets.load_dataset(hf_dataset_name, split=split)
+
+    df = pd.DataFrame(dataset)
+
+    # Determine question and answer columns
+    q_col = "question" if "question" in df.columns else "text"
+    a_col = "answer" if "answer" in df.columns else ("answers" if "answers" in df.columns else None)
+    id_col = "id" if "id" in df.columns else None
+
+    # Build query dict
+    nq_q_dict = {}
+    for idx, row in df.iterrows():
+        qid = row[id_col] if id_col else str(idx)
+        answer = row[a_col] if a_col else ""
+        # Flatten answer if it's a list/dict
+        if isinstance(answer, list):
+            if len(answer) > 0 and isinstance(answer[0], dict) and "text" in answer[0]:
+                answer = " ".join([a["text"] for a in answer])
+            else:
+                answer = " ".join(answer)
+        nq_q_dict[qid] = {"q": row[q_col], "a": answer}
+
+    # Build corpus using GenericDoc
+    corpus = {}
+    if "context" in df.columns:
+        for idx, row in df.iterrows():
+            for doc_idx, context in enumerate(row["context"]):
+                doc_id = f"{row[id_col] if id_col else idx}_{doc_idx}"
+                corpus[doc_id] = GenericDoc(doc_id=doc_id, d="", t="", a=context, m="")
+    else:
+        corpus = {}
+
+    # Metadata placeholder
+    df_meta = pd.DataFrame()  # no qrels in HF datasets by default
+
+    return corpus, nq_q_dict, df_meta
 
 def load_hf_model_causal_lm(dtype=torch.bfloat16, device_map="cuda:1"):
     model_id = "hf/gemma-2-2b-it"
@@ -119,40 +196,31 @@ def load_jsonl(file_path):
                 print(f"Skipping invalid JSON: {line.strip()}")
     return data
 
-def load_dataset(name):
-    if name == "nq":
-        file_path = '/scratch2/f0072r1/rs_rl/test_dataset/nq-dev-kilt.jsonl'
-        data = load_jsonl(file_path)
-        return data
+# def load_dataset(name):
+#     if name == "nq":
+#         file_path = '/scratch2/f0072r1/rs_rl/test_dataset/nq-dev-kilt.jsonl'
+#         data = load_jsonl(file_path)
+#         return data
 
-    if name == "hotpotqa":
-        file_path = '/scratch2/f0072r1/rs_rl/test_dataset/hotpotqa-dev-kilt.jsonl'
-        data = load_jsonl(file_path)
-        return data
+#     if name == "hotpotqa":
+#         file_path = '/scratch2/f0072r1/rs_rl/test_dataset/hotpotqa-dev-kilt.jsonl'
+#         data = load_jsonl(file_path)
+#         return data
     
-    if name == "triviaqa":
-        file_path = '/scratch2/f0072r1/rs_rl/test_dataset/triviaqa-dev-kilt.jsonl'
-        data = load_jsonl(file_path)
-        return data
+#     if name == "triviaqa":
+#         file_path = '/scratch2/f0072r1/rs_rl/test_dataset/triviaqa-dev-kilt.jsonl'
+#         data = load_jsonl(file_path)
+#         return data
 
-    if name == "2wiki":
-        file_path = "/scratch2/f0072r1/rs_rl/test_dataset/2WikiMultihopQA.jsonl"
-        data = load_jsonl(file_path)
-        return data
+#     if name == "2wiki":
+#         file_path = "/scratch2/f0072r1/rs_rl/test_dataset/2WikiMultihopQA.jsonl"
+#         data = load_jsonl(file_path)
+#         return data
 
-    if name == "fever":
-        file_path = "/scratch2/f0072r1/rs_rl/test_dataset/fever-dev-kilt.jsonl"
-        data = load_jsonl(file_path)
-        return data
-
-class GenericDoc(NamedTuple):
-    doc_id: str
-    d: str
-    t: str
-    a: str
-    m: str
-    def default_text(self):
-        return self.a
+#     if name == "fever":
+#         file_path = "/scratch2/f0072r1/rs_rl/test_dataset/fever-dev-kilt.jsonl"
+#         data = load_jsonl(file_path)
+#         return data
 
 def load_corpus(name="dpr"):
     if name == "dpr":
@@ -241,6 +309,7 @@ def parse_args():
     parser.add_argument("--model", choices=['gpt4omini', 'llama3-70B', 'llama3-8B', 'llama3-70B-0', 'mix01', 'mix02', 'mix03'])
     parser.add_argument("--dataset", choices=['nq', 'hotpotqa', 'triviaqa', "2wiki", "fever", "medmcqa", "simpleqa"])
     parser.add_argument("--exp", choices=['plan_rag_extract', 'plan_rag', 'llmcot', 'rag_extract', 'llmonly'])
+    parser.add_argument("--split", choices=['dev', 'train', 'test', 'validation'])
     parser.add_argument("--start_index", type=int, default=0)
     parser.add_argument("--end_index", type=int, default=1000000)
     parser.add_argument('--gpus', nargs='+', type=int)

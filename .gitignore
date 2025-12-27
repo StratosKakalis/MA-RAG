@@ -11,3 +11,5 @@ __pycache__/
 adhoc.py
 .envrc
 .python-version
+.ma-rag-env/
+benchmarks/

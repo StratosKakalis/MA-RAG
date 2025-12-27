@@ -2,6 +2,7 @@ import os
 
 from agents.step_definer import task_define
 from src.utils import RagState, QAAnswerFormat, QAAnswerState
+from src.rag_client import RAGClient
 from src.prompt_template import extract_system_messgage, extract_human_message, extract_input_variables
 from src.prompt_template import qa_human_message, qa_input_variables, qa_system_message
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
@@ -13,11 +14,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def build_rag_agent(retriever_tool = None):
+def build_rag_agent():
+
     API_KEY = os.getenv("API_KEY")
+    
+    # Initialize rag client:
+    rag_client = RAGClient(endpoint_url=os.getenv("RAG_ENDPOINT_URL"), api_key=os.getenv("RAG_API_KEY"))
+
     def retrieve(state: RagState):
         user_question = state["question"]
-        list_docs, list_doc_ids = retriever_tool(query=user_question)
+        results = rag_client.retrieve(question=user_question, k=6)
+        # Results is a list of dicts with "paper_id" and "chunk_text" keys
+        list_docs = [item["chunk_text"] for item in results]
+        list_doc_ids = [item["paper_id"] for item in results]
+
         state["documents"] = list_docs
         state["doc_ids"] = list_doc_ids
         return state
@@ -31,7 +41,7 @@ def build_rag_agent(retriever_tool = None):
         ]
         prompt = ChatPromptTemplate(input_variables=extract_input_variables, messages=messages)
         # LLM
-        llm = ChatOpenAI(model_name=os.getenv("MODEL_NAME"), temperature=0.0, api_key=API_KEY, max_retries=5)
+        llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.0, api_key=API_KEY, max_retries=5)
         chain = prompt | llm | StrOutputParser()
         user_question = state['question']
         list_notes = []
@@ -57,7 +67,7 @@ def build_rag_agent(retriever_tool = None):
         ]
         prompt = ChatPromptTemplate(input_variables=qa_input_variables, messages=messages)
         # LLM
-        llm = ChatOpenAI(model_name=os.getenv("MODEL_NAME"), temperature=0.3, api_key=API_KEY, max_retries=5)
+        llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.3, api_key=API_KEY, max_retries=5)
         structured_llm = llm.with_structured_output(QAAnswerFormat)
         full_prompt = prompt.format(
             context=docs,
@@ -74,7 +84,6 @@ def build_rag_agent(retriever_tool = None):
         return {"final_raw_answer": response}
         # return {"messages": [response]}
     # {"answer": response}
-
 
     rag_graph_builder = StateGraph(RagState)
     rag_graph_builder.add_node("retrieve", retrieve)

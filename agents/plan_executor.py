@@ -15,11 +15,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def build_plan_executor(retriever_tool = None):
+def build_plan_executor():
     API_KEY = os.getenv("API_KEY")
 
-
-    rag_agent = build_rag_agent(retriever_tool=retriever_tool)
+    rag_agent = build_rag_agent()
 
     def single_task_execute(state: PlanExecState):
         cur_task = state["step_question"][-1]
@@ -30,7 +29,7 @@ def build_plan_executor(retriever_tool = None):
                 HumanMessagePromptTemplate.from_template(aggregate_human_message),
             ]
             prompt = ChatPromptTemplate(input_variables=aggregate_input_variables, messages=messages)
-            llm = ChatOpenAI(model_name=os.getenv("MODEL_NAME"), temperature=0.0, api_key=API_KEY,  max_retries=5)
+            llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.0, api_key=API_KEY,  max_retries=5)
             structured_llm = llm.with_structured_output(QAAnswerFormat)
             chain = prompt | structured_llm
             full_prompt = prompt.format(

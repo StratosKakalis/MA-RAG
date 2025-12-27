@@ -29,7 +29,7 @@ def main():
     doc_c = ir_dataset.docs_count()
     accelerator = Accelerator()
     
-    model_name_or_path = 'hf/gte-multilingual-base'
+    model_name_or_path = 'Alibaba-NLP/gte-multilingual-base'
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = AutoModel.from_pretrained(model_name_or_path, trust_remote_code=True)
 

@@ -1,0 +1,54 @@
+{
+  "original_question": "Who invented the telescope?",
+  "plan": [
+    "Identify who invented the telescope."
+  ],
+  "past_exp": [
+    {
+      "original_question": "Who invented the telescope?",
+      "plan": [
+        "Identify who invented the telescope."
+      ],
+      "step_question": [
+        {
+          "type": "Research",
+          "task": "Find out who invented the telescope."
+        }
+      ],
+      "step_output": [
+        {
+          "analysis": "The question asks for the inventor of the telescope.",
+          "answer": "Hans Lippershey",
+          "success": "True",
+          "rating": 5
+        }
+      ],
+      "step_docs_ids": [
+        [
+          "234295049",
+          "234295049",
+          "234295049",
+          "234295049",
+          "271008246",
+          "234295049"
+        ]
+      ],
+      "step_notes": [
+        [
+          "[**Note:**\n- The invention of the telescope is credited to multiple individuals from different countries, including:\n  - Hans Lippershey (Holland)\n  - Zacharias Janssen (Holland)\n  - spectacle-makers from Holland (Metius, Jansen, and Drebbel)\n  - Girolamo Fracastoro, Gualterotti, Della Porta, and Galileo (Italy)\n  - Roger Bacon, Thomas Digges, and William Bourne (England)\n  - Velser and Marius (Germany)\n  - Juan Roget (Spain)\n  - Abul Hasan (Arabic world)\n- The first written account of the telescope's invention is found in the book \"Telescopium\" by Sirtori (1618), which describes a customer of Hans Lippershey's aligning a concave and convex lens to observe objects more closely.\n- Lippershey is credited with putting the two lenses into a tube and claiming the patent for the invention.]",
+          "[**Note:**\n- **Information:** The inventor of the telescope was Johannes Lipperhey (also known as Lippershey or Hans Lippersein).\n- **Evidence:** \"In the Dutch town of Middelburg, the manufacturer of lenses, Johannes Lipperhey (or Lippershey, or Hans Lippersein) applied for the first patent of the instrument in 1608.\"\n- **Source:** The passage]",
+          "[No related information from this document.]",
+          "[**Note:**\n- **Information:** The telescope was invented by Hans Lippershey.\n- **Evidence:** \"Galileo found out that Lipperhey had patented an optical instrument (spyglass) formed by a flat-concave lens and another flat-convex lens aligned in a tube, which allowed seeing expanded distant objects (3x).\"\n- **Source:** Passage]",
+          "[- Note: Hans Lippershey invented the telescope.\n  - Evidence: \"Hans Lippershey, the inventor of the telescope\"\n  - Relevance: Directly states that Hans Lippershey invented the telescope.]",
+          "[No related information from this document.]"
+        ]
+      ],
+      "plan_summary": {
+        "output": "Final answer: Hans Lippershey, Output: Successful, score: 5",
+        "answer": "Hans Lippershey",
+        "score": 5
+      },
+      "stop": true
+    }
+  ]
+}

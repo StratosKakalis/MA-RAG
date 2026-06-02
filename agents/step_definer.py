@@ -1,9 +1,9 @@
 import os 
 
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate
-from src.utils import PlanExecState, PlanSummaryState, StepTaskState
-from src.prompt_template import step_system_message, step_human_message, step_input_variables, summary_system_message, summary_human_message, summary_input_variables
-from src.utils import StepTaskFormat, PlanSummaryFormat
+from marag_system.src.utils import PlanExecState, PlanSummaryState, StepTaskState
+from marag_system.src.prompt_template import step_system_message, step_human_message, step_input_variables, summary_system_message, summary_human_message, summary_input_variables
+from marag_system.src.utils import StepTaskFormat, PlanSummaryFormat
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -11,13 +11,27 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 
 def task_define(state: PlanExecState):
-    API_KEY = os.getenv("API_KEY")
+    API_KEY = os.environ["OPENROUTER_API_KEY"]
     messages = [
         SystemMessagePromptTemplate.from_template(step_system_message),
         HumanMessagePromptTemplate.from_template(step_human_message),
     ]
     prompt = ChatPromptTemplate(input_variables=step_input_variables, messages=messages)
-    llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.3, api_key=API_KEY, max_retries=5)
+    provider_preferences = {
+        "order": [
+            "Phala", 
+            "DeepInfra", 
+            "Novita", 
+            "SiliconFlow", 
+            "DeepSeek"
+        ],
+        "allow_fallbacks": True
+    }
+    llm = ChatOpenAI(model=os.getenv("AGENT_MODEL_NAME"), temperature=0.5, openai_api_key=API_KEY, base_url=os.environ["OPENROUTER_API_BASE"], max_retries=2, max_tokens=8192,
+        extra_body={
+            # "repetition_penalty": 1.1,
+            "provider": provider_preferences
+        })
     structured_llm = llm.with_structured_output(StepTaskFormat)
     chain = prompt | structured_llm
 
@@ -29,7 +43,21 @@ def task_define(state: PlanExecState):
             HumanMessagePromptTemplate.from_template(summary_human_message),
         ]
         prompt = ChatPromptTemplate(input_variables=summary_input_variables, messages=messages)
-        llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.0, api_key=API_KEY,  max_retries=5)
+        provider_preferences = {
+            "order": [
+                "Phala", 
+                "DeepInfra", 
+                "Novita", 
+                "SiliconFlow", 
+                "DeepSeek"
+            ],
+            "allow_fallbacks": True
+        }
+        llm = ChatOpenAI(model=os.getenv("AGENT_MODEL_NAME"), temperature=0.5, openai_api_key=API_KEY, base_url=os.environ["OPENROUTER_API_BASE"], max_retries=2, max_tokens=8192,
+            extra_body={
+                # "repetition_penalty": 1.1,
+                "provider": provider_preferences
+            })
         structured_llm = llm.with_structured_output(PlanSummaryFormat)
 
         chain = prompt | structured_llm

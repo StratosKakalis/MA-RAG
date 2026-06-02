@@ -4,7 +4,9 @@ import re
 import argparse
 from tqdm import tqdm
 from datasets import load_dataset
-from src.agentic_rag_wrapper import agentic_rag_answer
+from marag_system.src.agentic_rag_wrapper import agentic_rag_answer
+import os
+import json
 
 # ---------------------------
 # Utility functions

@@ -4,8 +4,8 @@ import argparse
 
 from langgraph.graph import StateGraph, START, END
 from src.utils import GraphState
-from agents.plan_executor import build_plan_executor
-from agents.plan import plan_agent
+from marag_system.agents.plan_executor import build_plan_executor
+from marag_system.agents.plan import plan_agent
 from dotenv import load_dotenv
 
 load_dotenv()

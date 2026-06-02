@@ -282,6 +282,7 @@ class PlanExecState(TypedDict):
     step_output: Annotated[List[QAAnswerState], operator.add] # Output of each sub tasks
     step_docs_ids: Annotated[List[List[str]], operator.add]
     step_notes: Annotated[List[List[str]], operator.add]
+    step_original_docs: Annotated[List[List[Optional['RagState']]], operator.add] # Original documents for each step
     plan_summary: PlanSummaryState
     stop: bool = False
 

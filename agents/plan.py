@@ -1,6 +1,6 @@
-from src.utils import GraphState
-from src.prompt_template import planing_system_message, planing_human_message, planing_input_variables
-from src.utils import PlanFormat
+from marag_system.src.utils import GraphState
+from marag_system.src.prompt_template import planing_system_message, planing_human_message, planing_input_variables
+from marag_system.src.utils import PlanFormat
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -11,7 +11,7 @@ from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTe
 load_dotenv()
 
 def plan_agent(state: GraphState):
-    API_KEY = os.getenv("API_KEY")
+    API_KEY = os.getenv("OPENROUTER_API_KEY")
     original_question = state["original_question"]
     all_mem = []
     for past_exp in state["past_exp"]:
@@ -32,7 +32,21 @@ def plan_agent(state: GraphState):
         HumanMessagePromptTemplate.from_template(planing_human_message),
     ]
     prompt = ChatPromptTemplate(input_variables=planing_input_variables, messages=messages)
-    llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.3, api_key=API_KEY)
+    provider_preferences = {
+        "order": [
+            "Phala", 
+            "DeepInfra", 
+            "Novita", 
+            "SiliconFlow", 
+            "DeepSeek"
+        ],
+        "allow_fallbacks": True
+    }
+    llm = ChatOpenAI(model=os.getenv("AGENT_MODEL_NAME"), temperature=0.5, api_key=API_KEY, base_url=os.environ["OPENROUTER_API_BASE"], max_tokens=8192,
+        extra_body={
+            # "repetition_penalty": 1.1,
+            "provider": provider_preferences
+        })
     structured_llm = llm.with_structured_output(PlanFormat)
     chain = prompt | structured_llm
     fprompt = prompt.format(

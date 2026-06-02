@@ -1,10 +1,10 @@
 import os
 
-from agents.step_definer import task_define
-from src.utils import RagState, QAAnswerFormat, QAAnswerState
-from src.rag_client import RAGClient
-from src.prompt_template import extract_system_messgage, extract_human_message, extract_input_variables
-from src.prompt_template import qa_human_message, qa_input_variables, qa_system_message
+from marag_system.agents.step_definer import task_define
+from marag_system.src.utils import RagState, QAAnswerFormat, QAAnswerState
+from marag_system.src.rag_client import RAGClient
+from marag_system.src.prompt_template import extract_system_messgage, extract_human_message, extract_input_variables
+from marag_system.src.prompt_template import qa_human_message, qa_input_variables, qa_system_message
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
@@ -16,14 +16,16 @@ load_dotenv()
 
 def build_rag_agent():
 
-    API_KEY = os.getenv("API_KEY")
+    API_KEY = os.getenv("OPENROUTER_API_KEY")
     
     # Initialize rag client:
     rag_client = RAGClient(endpoint_url=os.getenv("RAG_ENDPOINT_URL"), api_key=os.getenv("RAG_API_KEY"))
 
     def retrieve(state: RagState):
         user_question = state["question"]
-        results = rag_client.retrieve(question=user_question, k=6)
+        results = rag_client.retrieve(question=user_question, k=20)
+        # Keep only top 5 results
+        results = results[:5]
         # Results is a list of dicts with "paper_id" and "chunk_text" keys
         list_docs = [item["chunk_text"] for item in results]
         list_doc_ids = [item["paper_id"] for item in results]
@@ -41,7 +43,21 @@ def build_rag_agent():
         ]
         prompt = ChatPromptTemplate(input_variables=extract_input_variables, messages=messages)
         # LLM
-        llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.0, api_key=API_KEY, max_retries=5)
+        provider_preferences = {
+            "order": [
+                "Phala", 
+                "DeepInfra", 
+                "Novita", 
+                "SiliconFlow", 
+                "DeepSeek"
+            ],
+            "allow_fallbacks": True
+        }
+        llm = ChatOpenAI(model=os.getenv("AGENT_MODEL_NAME"), temperature=0.5, api_key=API_KEY, base_url=os.environ["OPENROUTER_API_BASE"], max_retries=2, max_tokens=8192,
+            extra_body={
+                # "repetition_penalty": 1.1,
+                "provider": provider_preferences
+            })
         chain = prompt | llm | StrOutputParser()
         user_question = state['question']
         list_notes = []
@@ -67,7 +83,21 @@ def build_rag_agent():
         ]
         prompt = ChatPromptTemplate(input_variables=qa_input_variables, messages=messages)
         # LLM
-        llm = ChatOpenAI(model=os.getenv("MODEL_NAME"), temperature=0.3, api_key=API_KEY, max_retries=5)
+        provider_preferences = {
+            "order": [
+                "Phala", 
+                "DeepInfra", 
+                "Novita", 
+                "SiliconFlow", 
+                "DeepSeek"
+            ],
+            "allow_fallbacks": True
+        }
+        llm = ChatOpenAI(model=os.getenv("AGENT_MODEL_NAME"), temperature=0.5, api_key=API_KEY, base_url=os.environ["OPENROUTER_API_BASE"], max_retries=2, max_tokens=8192,
+            extra_body={
+                # "repetition_penalty": 1.1,
+                "provider": provider_preferences
+            })
         structured_llm = llm.with_structured_output(QAAnswerFormat)
         full_prompt = prompt.format(
             context=docs,
